@@ -1,0 +1,64 @@
+workspace:
+  id: a79284d3-d9a0-45f4-80d1-d38c43183635
+localResources:
+  specs:
+    - ../logstream-main/backend/logstream-backend/target/classes/log_service.proto
+    - ../logstream-main/backend/logstream-backend/src/main/proto/log_service.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/cloud/extended_operations.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/rpc/code.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/rpc/status.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/longrunning/operations.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/type/field_behavior.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/api/quota.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/api/logging.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/protobuf/any.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/protobuf/api.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/protobuf/descriptor.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/protobuf/duration.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/protobuf/empty.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/protobuf/field_mask.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/protobuf/java_features.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/protobuf/source_context.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/protobuf/struct.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/protobuf/timestamp.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/protobuf/type.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/protobuf/wrappers.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/type/calendar_period.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/type/timeofday.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/cloud/location/locations.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/cloud/audit/audit_log.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/logging/type/http_request.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/logging/type/log_severity.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/rpc/context/attribute_context.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/rpc/context/audit_context.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/geo/type/viewport.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/shopping/type/types.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/apps/card/v1/card.proto
+    - ../D:/logstream-main/logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/type/expr.proto
+    - ../D:/logstream-main/logstream-main/backend/logstream-backend/target/protoc-dependencies/a215c979f41be755dbb216e2b90cdd28/google/protobuf/source_context.proto
+    - ../D:/logstream-main/logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/type/datetime.proto
+    - ../D:/logstream-main/logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/type/dayofweek.proto
+    - ../D:/logstream-main/logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/api/annotations.proto
+    - ../D:/logstream-main/logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/logging/type/log_severity.proto
+    - ../D:/logstream-main/logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/rpc/context/attribute_context.proto
+    - ../D:/logstream-main/logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/cloud/location/locations.proto
+    - ../D:/logstream-main/logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/rpc/code.proto
+    - ../D:/logstream-main/logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/shopping/type/types.proto
+    - ../D:/logstream-main/logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/type/timeofday.proto
+    - ../D:/logstream-main/logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/type/calendar_period.proto
+resourceNameMappings:
+  specs:
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/type/decimal.proto: decimal.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/rpc/error_details.proto: error_details.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/rpc/context/attribute_context.proto: attribute_context.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/type/phone_number.proto: phone_number.proto
+    - ../logstream-main/backend/logstream-backend/src/main/proto/log_service.proto: log_service.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/type/annotations.proto: annotations.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/type/latlng.proto: latlng.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/cloud/location/locations.proto: locations.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/type/quaternion.proto: quaternion.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/api/annotations.proto: annotations.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/rpc/code.proto: code.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/shopping/type/types.proto: types.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/type/timeofday.proto: timeofday.proto
+    - ../logstream-main/backend/logstream-backend/target/protoc-dependencies/1616ef33c7e2d2072bfe7e4dd136c218/google/type/calendar_period.proto: calendar_period.proto

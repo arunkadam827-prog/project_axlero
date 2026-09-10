@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+option java_package = "com.logstream.grpc";
+
+option java_outer_classname = "LogServiceProto";
+
+
+service LogService {
+
+    rpc SendLog(LogRequest)
+            returns (LogResponse);
+
+    rpc SendLogs(BatchLogRequest)
+            returns (LogResponse);
+
+    rpc SearchLogs(SearchRequest)
+            returns (SearchResponse);
+}
+
+
+message LogRequest {
+
+    string timestamp = 1;
+
+    string level = 2;
+
+    string service = 3;
+
+    string message = 4;
+
+    string host = 5;
+}
+
+
+message BatchLogRequest {
+
+    repeated LogRequest logs = 1;
+}
+
+
+message LogResponse {
+
+    bool success = 1;
+
+    string message = 2;
+}
+
+
+message SearchRequest {
+
+    string query = 1;
+
+    int32 limit = 2;
+}
+
+
+message SearchResponse {
+
+    repeated LogRequest logs = 1;
+}
