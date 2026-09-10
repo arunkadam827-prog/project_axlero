@@ -1,16 +1,34 @@
-# React + Vite
+# LogStream React Dashboard — Backend Connected
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+This frontend is prepared for the Log Stream Spring Boot backend.
 
-Currently, two official plugins are available:
+## Run
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```cmd
+npm install
+npm run dev
+```
 
-## React Compiler
+Open:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+http://localhost:5173
 
-## Expanding the Oxlint configuration
+## Backend expected
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+REST:
+- http://localhost:8080/api/logs/count
+- http://localhost:8080/api/logs/stats
+- http://localhost:8080/api/logs?limit=100
+- http://localhost:8080/api/logs/search?q=error&level=ERROR&service=payment-service&limit=100
+
+WebSocket:
+- ws://localhost:8080/ws/logs
+
+gRPC ingestion remains:
+- localhost:9090
+
+The first two REST endpoints already exist in the current Log Stream backend. The list/search REST endpoints and WebSocket endpoint must be added to the backend for the Search Logs and Live Tail screens.
+
+## Important
+
+Do not open port 9090 in a browser. gRPC clients such as Postman should connect to `localhost:9090`.
