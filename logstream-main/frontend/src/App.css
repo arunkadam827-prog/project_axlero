@@ -81,3 +81,120 @@ td { padding: 11px 10px; border-bottom: 1px solid #161f2b; color: #b9c4d2; verti
 .settings label { color: #8b99ac; font-size: 12px; }
 .settings input { display: block; margin-top: 7px; }
 @media (max-width: 1150px) { body { min-width: 900px; } .cards { grid-template-columns: repeat(2, 1fr); } .search-panel { grid-template-columns: 1fr 130px; } .search-panel .primary { min-height: 40px; } }
+/* ================================
+   LIVE TAIL CONTROLS
+   ================================ */
+
+.live-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.live-controls span {
+  color: #77869b;
+  font-size: 12px;
+}
+
+.live-controls .refresh {
+  padding: 8px 14px;
+}
+
+
+/* ================================
+   SEARCH RESULTS
+   ================================ */
+
+.search-panel {
+  display: grid;
+  grid-template-columns: 1fr 150px 190px 90px;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.search-panel input,
+.search-panel select {
+  width: 100%;
+  border: 1px solid #263243;
+  border-radius: 7px;
+  background: #0d141e;
+  color: #d9e2ee;
+  padding: 10px 11px;
+  outline: none;
+}
+
+.search-panel input:focus,
+.search-panel select:focus {
+  border-color: #287fe1;
+}
+
+.search-panel .primary {
+  min-height: 40px;
+}
+
+
+/* ================================
+   LIVE CONNECTION STATUS
+   ================================ */
+
+.live-header {
+  margin-bottom: 16px;
+  padding: 11px 14px;
+  border: 1px solid #20372f;
+  border-radius: 8px;
+  background: #0d1915;
+  color: #73dba8;
+  font-size: 12px;
+}
+
+.pulse {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #35d38a;
+  box-shadow: 0 0 0 5px #35d38a22;
+}
+
+
+/* ================================
+   EMPTY STATE
+   ================================ */
+
+.empty {
+  padding: 50px 20px;
+  text-align: center;
+  color: #69788c;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.empty small {
+  color: #566579;
+}
+
+
+/* ================================
+   RESPONSIVE
+   ================================ */
+
+@media (max-width: 1150px) {
+
+  body {
+    min-width: 900px;
+  }
+
+  .cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .search-panel {
+    grid-template-columns: 1fr 130px;
+  }
+
+  .search-panel .primary {
+    min-height: 40px;
+  }
+}

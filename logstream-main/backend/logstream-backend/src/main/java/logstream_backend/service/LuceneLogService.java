@@ -3,12 +3,24 @@ package logstream_backend.service;
 import com.logstream.grpc.LogRequest;
 
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.document.*;
-import org.apache.lucene.index.*;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.*;
-import org.apache.lucene.store.*;
-
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -19,11 +31,9 @@ import java.util.List;
 @Service
 public class LuceneLogService {
 
-    private static final String INDEX_PATH =
-            "logs/lucene-index";
+    private static final String INDEX_PATH = "logs/lucene-index";
 
     private final StandardAnalyzer analyzer;
-
     private final Directory directory;
 
     public LuceneLogService() throws IOException {
@@ -40,8 +50,11 @@ public class LuceneLogService {
         );
     }
 
-    public synchronized void indexLog(
-            LogRequest request) throws IOException {
+    /**
+     * Add one log to Lucene.
+     */
+    public synchronized void indexLog(LogRequest request)
+            throws IOException {
 
         IndexWriterConfig config =
                 new IndexWriterConfig(analyzer);
@@ -55,15 +68,15 @@ public class LuceneLogService {
                     new StringField(
                             "timestamp",
                             request.getTimestamp(),
-                            Field.Store.YES
+                            StringField.Store.YES
                     )
             );
 
             document.add(
                     new StringField(
                             "level",
-                            request.getLevel(),
-                            Field.Store.YES
+                            request.getLevel().toUpperCase(),
+                            StringField.Store.YES
                     )
             );
 
@@ -71,7 +84,7 @@ public class LuceneLogService {
                     new StringField(
                             "service",
                             request.getService(),
-                            Field.Store.YES
+                            StringField.Store.YES
                     )
             );
 
@@ -79,7 +92,7 @@ public class LuceneLogService {
                     new TextField(
                             "message",
                             request.getMessage(),
-                            Field.Store.YES
+                            TextField.Store.YES
                     )
             );
 
@@ -87,12 +100,11 @@ public class LuceneLogService {
                     new StringField(
                             "host",
                             request.getHost(),
-                            Field.Store.YES
+                            StringField.Store.YES
                     )
             );
 
             writer.addDocument(document);
-
             writer.commit();
         }
 
@@ -106,20 +118,27 @@ public class LuceneLogService {
         );
     }
 
+    /**
+     * Search logs using message + optional filters.
+     */
     public synchronized List<LogRequest> searchLogs(
             String queryText,
+            String level,
+            String service,
             int limit) throws Exception {
 
-        List<LogRequest> results =
-                new ArrayList<>();
+        List<LogRequest> results = new ArrayList<>();
 
         if (!DirectoryReader.indexExists(directory)) {
             return results;
         }
 
         if (limit <= 0) {
-            limit = 10;
+            limit = 100;
         }
+
+        // Prevent an excessively large browser request.
+        limit = Math.min(limit, 500);
 
         try (DirectoryReader reader =
                      DirectoryReader.open(directory)) {
@@ -127,14 +146,13 @@ public class LuceneLogService {
             IndexSearcher searcher =
                     new IndexSearcher(reader);
 
-            Query query;
+            BooleanQuery.Builder builder =
+                    new BooleanQuery.Builder();
 
-            if (queryText == null ||
-                    queryText.isBlank()) {
-
-                query = new MatchAllDocsQuery();
-
-            } else {
+            /*
+             * Message search
+             */
+            if (queryText != null && !queryText.isBlank()) {
 
                 QueryParser parser =
                         new QueryParser(
@@ -142,13 +160,66 @@ public class LuceneLogService {
                                 analyzer
                         );
 
-                query = parser.parse(
-                        QueryParser.escape(queryText)
+                Query messageQuery =
+                        parser.parse(
+                                QueryParser.escape(
+                                        queryText.trim()
+                                )
+                        );
+
+                builder.add(
+                        messageQuery,
+                        BooleanClause.Occur.MUST
+                );
+
+            } else {
+
+                builder.add(
+                        new MatchAllDocsQuery(),
+                        BooleanClause.Occur.MUST
                 );
             }
 
+            /*
+             * Level filter
+             */
+            if (level != null
+                    && !level.isBlank()
+                    && !level.equalsIgnoreCase("ALL")) {
+
+                builder.add(
+                        new TermQuery(
+                                new Term(
+                                        "level",
+                                        level.toUpperCase()
+                                )
+                        ),
+                        BooleanClause.Occur.FILTER
+                );
+            }
+
+            /*
+             * Service filter
+             */
+            if (service != null
+                    && !service.isBlank()
+                    && !service.equalsIgnoreCase("ALL")) {
+
+                builder.add(
+                        new TermQuery(
+                                new Term(
+                                        "service",
+                                        service
+                                )
+                        ),
+                        BooleanClause.Occur.FILTER
+                );
+            }
+
+            Query finalQuery = builder.build();
+
             TopDocs topDocs =
-                    searcher.search(query, limit);
+                    searcher.search(finalQuery, limit);
 
             for (ScoreDoc scoreDoc :
                     topDocs.scoreDocs) {
@@ -160,19 +231,29 @@ public class LuceneLogService {
                 LogRequest log =
                         LogRequest.newBuilder()
                                 .setTimestamp(
-                                        document.get("timestamp")
+                                        valueOrEmpty(
+                                                document.get("timestamp")
+                                        )
                                 )
                                 .setLevel(
-                                        document.get("level")
+                                        valueOrEmpty(
+                                                document.get("level")
+                                        )
                                 )
                                 .setService(
-                                        document.get("service")
+                                        valueOrEmpty(
+                                                document.get("service")
+                                        )
                                 )
                                 .setMessage(
-                                        document.get("message")
+                                        valueOrEmpty(
+                                                document.get("message")
+                                        )
                                 )
                                 .setHost(
-                                        document.get("host")
+                                        valueOrEmpty(
+                                                document.get("host")
+                                        )
                                 )
                                 .build();
 
@@ -181,6 +262,21 @@ public class LuceneLogService {
         }
 
         return results;
+    }
+
+    /**
+     * Backward-compatible search method.
+     */
+    public synchronized List<LogRequest> searchLogs(
+            String queryText,
+            int limit) throws Exception {
+
+        return searchLogs(
+                queryText,
+                null,
+                null,
+                limit
+        );
     }
 
     public synchronized int getTotalLogs()
@@ -195,5 +291,10 @@ public class LuceneLogService {
 
             return reader.numDocs();
         }
+    }
+
+    private String valueOrEmpty(String value) {
+
+        return value == null ? "" : value;
     }
 }

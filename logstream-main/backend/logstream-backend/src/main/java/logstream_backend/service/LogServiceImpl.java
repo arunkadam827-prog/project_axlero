@@ -1,15 +1,22 @@
 package logstream_backend.service;
 
-import com.logstream.grpc.*;
+import com.logstream.grpc.BatchLogRequest;
+import com.logstream.grpc.LogRequest;
+import com.logstream.grpc.LogResponse;
+import com.logstream.grpc.LogServiceGrpc;
+import com.logstream.grpc.SearchRequest;
+import com.logstream.grpc.SearchResponse;
 
 import io.grpc.stub.StreamObserver;
 
 import logstream_backend.entity.LogEntity;
 import logstream_backend.repository.LogRepository;
+import logstream_backend.websocket.LogWebSocketHandler;
 
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class LogServiceImpl
@@ -19,12 +26,22 @@ public class LogServiceImpl
 
     private final LogRepository logRepository;
 
+    private final LogWebSocketHandler
+            logWebSocketHandler;
+
     public LogServiceImpl(
             LuceneLogService luceneLogService,
-            LogRepository logRepository) {
+            LogRepository logRepository,
+            LogWebSocketHandler logWebSocketHandler) {
 
-        this.luceneLogService = luceneLogService;
-        this.logRepository = logRepository;
+        this.luceneLogService =
+                luceneLogService;
+
+        this.logRepository =
+                logRepository;
+
+        this.logWebSocketHandler =
+                logWebSocketHandler;
     }
 
     @Override
@@ -34,41 +51,16 @@ public class LogServiceImpl
 
         try {
 
-            System.out.println();
-            System.out.println("========================================");
-            System.out.println("LOG RECEIVED");
-            System.out.println("========================================");
+            printLog(request);
 
-            System.out.println(
-                    "Timestamp : "
-                            + request.getTimestamp()
-            );
-
-            System.out.println(
-                    "Level     : "
-                            + request.getLevel()
-            );
-
-            System.out.println(
-                    "Service   : "
-                            + request.getService()
-            );
-
-            System.out.println(
-                    "Message   : "
-                            + request.getMessage()
-            );
-
-            System.out.println(
-                    "Host      : "
-                            + request.getHost()
-            );
-
-            // PostgreSQL
+            /*
+             * 1. PostgreSQL
+             */
             LogEntity entity =
                     new LogEntity(
                             request.getTimestamp(),
-                            request.getLevel(),
+                            request.getLevel()
+                                    .toUpperCase(),
                             request.getService(),
                             request.getMessage(),
                             request.getHost()
@@ -80,8 +72,18 @@ public class LogServiceImpl
                     "POSTGRESQL: Log saved"
             );
 
-            // Lucene
+            /*
+             * 2. Lucene
+             */
             luceneLogService.indexLog(request);
+
+            /*
+             * 3. WebSocket
+             *
+             * This sends the newly received
+             * log immediately to React Live Tail.
+             */
+            broadcastLog(request);
 
             long totalLogs =
                     logRepository.count();
@@ -97,7 +99,6 @@ public class LogServiceImpl
                             .build();
 
             observer.onNext(response);
-
             observer.onCompleted();
 
         } catch (Exception e) {
@@ -133,7 +134,8 @@ public class LogServiceImpl
                 LogEntity entity =
                         new LogEntity(
                                 log.getTimestamp(),
-                                log.getLevel(),
+                                log.getLevel()
+                                        .toUpperCase(),
                                 log.getService(),
                                 log.getMessage(),
                                 log.getHost()
@@ -142,6 +144,11 @@ public class LogServiceImpl
                 logRepository.save(entity);
 
                 luceneLogService.indexLog(log);
+
+                /*
+                 * Send every log to Live Tail.
+                 */
+                broadcastLog(log);
 
                 count++;
             }
@@ -208,5 +215,71 @@ public class LogServiceImpl
 
             observer.onError(e);
         }
+    }
+
+    /**
+     * Convert the gRPC log into JSON-friendly
+     * data and send it to all WebSocket clients.
+     */
+    private void broadcastLog(
+            LogRequest request) {
+
+        Map<String, Object> log =
+                Map.of(
+                        "timestamp",
+                        request.getTimestamp(),
+
+                        "level",
+                        request.getLevel(),
+
+                        "service",
+                        request.getService(),
+
+                        "message",
+                        request.getMessage(),
+
+                        "host",
+                        request.getHost()
+                );
+
+        logWebSocketHandler.broadcast(log);
+    }
+
+    private void printLog(
+            LogRequest request) {
+
+        System.out.println();
+        System.out.println(
+                "========================================"
+        );
+        System.out.println("LOG RECEIVED");
+        System.out.println(
+                "========================================"
+        );
+
+        System.out.println(
+                "Timestamp : "
+                        + request.getTimestamp()
+        );
+
+        System.out.println(
+                "Level     : "
+                        + request.getLevel()
+        );
+
+        System.out.println(
+                "Service   : "
+                        + request.getService()
+        );
+
+        System.out.println(
+                "Message   : "
+                        + request.getMessage()
+        );
+
+        System.out.println(
+                "Host      : "
+                        + request.getHost()
+        );
     }
 }
