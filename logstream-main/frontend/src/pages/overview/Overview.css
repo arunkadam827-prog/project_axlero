@@ -1,0 +1,190 @@
+.overview-page {
+  width: 100%;
+}
+
+.overview-header h1 {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.overview-header p {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.stat-card {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 120px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  border-color: #2f3b52;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.stat-card h2 {
+  margin-top: 12px;
+  font-size: 26px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.stat-icon.total {
+  color: #6366f1;
+}
+
+.stat-icon.info {
+  color: #3b82f6;
+}
+
+.stat-icon.warning {
+  color: #f59e0b;
+}
+
+.stat-icon.error {
+  color: #ef4444;
+}
+
+.recent-logs {
+  margin-top: 28px;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.section-header p {
+  margin-top: 5px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.section-header button {
+  border: 1px solid #2f3b52;
+  background: transparent;
+  color: #94a3b8;
+  padding: 8px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.section-header button:hover {
+  background: #1b1f3a;
+  color: #818cf8;
+  border-color: #6366f1;
+}
+
+.log-row {
+  display: grid;
+  grid-template-columns: 90px 70px 160px 1fr 100px;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  margin-top: 18px;
+  border-top: 1px solid #1f2937;
+  font-size: 13px;
+}
+
+.log-time {
+  color: #64748b;
+  font-family: monospace;
+}
+
+.log-level {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.log-level.error {
+  color: #ef4444;
+}
+
+.log-level.warning {
+  color: #f59e0b;
+}
+
+.log-level.info {
+  color: #3b82f6;
+}
+
+.log-service {
+  color: #818cf8;
+}
+
+.log-message {
+  color: #cbd5e1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-host {
+  color: #64748b;
+  font-family: monospace;
+}
+.log-header {
+  display: grid;
+  grid-template-columns: 90px 70px 160px 1fr 100px;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #1f2937;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.chart-section {
+  margin-top: 28px;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.section-title h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.section-title p {
+  margin-top: 5px;
+  font-size: 13px;
+  color: #64748b;
+}

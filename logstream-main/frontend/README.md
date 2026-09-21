@@ -1,34 +1,32 @@
-# LogStream React Dashboard — Backend Connected
+# React + TypeScript + Vite
 
-This frontend is prepared for the Log Stream Spring Boot backend.
+This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
-## Run
+Currently, two official plugins are available:
 
-```cmd
-npm install
-npm run dev
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the Oxlint configuration
+
+If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+
+```json
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "oxc"],
+  "options": {
+    "typeAware": true
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+  }
+}
 ```
 
-Open:
-
-http://localhost:5173
-
-## Backend expected
-
-REST:
-- http://localhost:8080/api/logs/count
-- http://localhost:8080/api/logs/stats
-- http://localhost:8080/api/logs?limit=100
-- http://localhost:8080/api/logs/search?q=error&level=ERROR&service=payment-service&limit=100
-
-WebSocket:
-- ws://localhost:8080/ws/logs
-
-gRPC ingestion remains:
-- localhost:9090
-
-The first two REST endpoints already exist in the current Log Stream backend. The list/search REST endpoints and WebSocket endpoint must be added to the backend for the Search Logs and Live Tail screens.
-
-## Important
-
-Do not open port 9090 in a browser. gRPC clients such as Postman should connect to `localhost:9090`.
+See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.

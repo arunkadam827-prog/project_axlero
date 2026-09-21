@@ -1,0 +1,205 @@
+.analytics-page {
+  width: 100%;
+}
+
+
+/* Header */
+
+.analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 28px;
+}
+
+.analytics-header h1 {
+  font-size: 30px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.analytics-header p {
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.analytics-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.analytics-actions button {
+  border: 1px solid #1f2937;
+  background: #111827;
+  color: #94a3b8;
+  padding: 9px 13px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.analytics-actions button:hover {
+  background: #161d2b;
+  color: #f8fafc;
+}
+
+.analytics-actions .refresh-btn {
+  color: #a5b4fc;
+}
+
+
+/* Summary Cards */
+
+.analytics-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.analytics-card {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 19px;
+  min-height: 125px;
+  transition: 0.2s ease;
+}
+
+.analytics-card:hover {
+  border-color: #2f3b52;
+  transform: translateY(-2px);
+}
+
+.analytics-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.analytics-card-top svg {
+  color: #6366f1;
+}
+
+.analytics-card h2 {
+  margin-top: 12px;
+  font-size: 25px;
+  color: #f8fafc;
+}
+
+.analytics-card p {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.positive {
+  color: #22c55e;
+}
+
+.negative {
+  color: #f59e0b;
+}
+
+
+/* Chart Sections */
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.analytics-section {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.section-heading h2 {
+  font-size: 17px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.section-heading p {
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+
+/* Temporary chart area */
+
+.chart-placeholder {
+  height: 300px;
+  margin-top: 20px;
+  border: 1px dashed #263244;
+  border-radius: 8px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #475569;
+  font-size: 13px;
+}
+
+
+/* Performance Table */
+
+.performance-section {
+  margin-bottom: 24px;
+}
+
+.performance-table {
+  margin-top: 20px;
+}
+
+.performance-header,
+.performance-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr;
+  align-items: center;
+  gap: 16px;
+}
+
+.performance-header {
+  padding: 12px 0;
+  border-bottom: 1px solid #1f2937;
+
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.performance-row {
+  padding: 15px 0;
+  border-bottom: 1px solid #1f2937;
+
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.performance-row:last-child {
+  border-bottom: none;
+}
+
+.error-text {
+  color: #f59e0b;
+}
+
+.status {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status.healthy {
+  color: #22c55e;
+}
