@@ -11,275 +11,259 @@ import io.grpc.stub.StreamObserver;
 
 import logstream_backend.entity.LogEntity;
 import logstream_backend.repository.LogRepository;
+import logstream_backend.search.LogDocumentMapper;
+import logstream_backend.search.LogHit;
+import logstream_backend.search.SearchResult;
+import logstream_backend.tenant.TenantContext;
+import logstream_backend.tenant.TenantGrpcInterceptor;
 import logstream_backend.websocket.LogWebSocketHandler;
 
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * gRPC entry point for ingestion and ad-hoc search.
+ *
+ * <p>
+ * Tenant resolution order (defence in depth, see
+ * {@code docs/MULTI_TENANCY.md} §4):
+ * </p>
+ * <ol>
+ * <li>gRPC metadata {@code tenant-id} bound by
+ * {@link TenantGrpcInterceptor};</li>
+ * <li>the {@code tenant_id} field on the record itself;</li>
+ * <li>the {@code default} tenant.</li>
+ * </ol>
+ */
 @Service
 public class LogServiceImpl
-        extends LogServiceGrpc.LogServiceImplBase {
+                extends LogServiceGrpc.LogServiceImplBase {
 
-    private final LuceneLogService luceneLogService;
+        private final LuceneLogService luceneLogService;
 
-    private final LogRepository logRepository;
+        private final LogRepository logRepository;
 
-    private final LogWebSocketHandler
-            logWebSocketHandler;
+        private final LogWebSocketHandler logWebSocketHandler;
 
-    public LogServiceImpl(
-            LuceneLogService luceneLogService,
-            LogRepository logRepository,
-            LogWebSocketHandler logWebSocketHandler) {
+        private final LogDocumentMapper mapper;
 
-        this.luceneLogService =
-                luceneLogService;
+        public LogServiceImpl(
+                        LuceneLogService luceneLogService,
+                        LogRepository logRepository,
+                        LogWebSocketHandler logWebSocketHandler,
+                        LogDocumentMapper mapper) {
 
-        this.logRepository =
-                logRepository;
-
-        this.logWebSocketHandler =
-                logWebSocketHandler;
-    }
-
-    @Override
-    public void sendLog(
-            LogRequest request,
-            StreamObserver<LogResponse> observer) {
-
-        try {
-
-            printLog(request);
-
-            /*
-             * 1. PostgreSQL
-             */
-            LogEntity entity =
-                    new LogEntity(
-                            request.getTimestamp(),
-                            request.getLevel()
-                                    .toUpperCase(),
-                            request.getService(),
-                            request.getMessage(),
-                            request.getHost()
-                    );
-
-            logRepository.save(entity);
-
-            System.out.println(
-                    "POSTGRESQL: Log saved"
-            );
-
-            /*
-             * 2. Lucene
-             */
-            luceneLogService.indexLog(request);
-
-            /*
-             * 3. WebSocket
-             *
-             * This sends the newly received
-             * log immediately to React Live Tail.
-             */
-            broadcastLog(request);
-
-            long totalLogs =
-                    logRepository.count();
-
-            LogResponse response =
-                    LogResponse.newBuilder()
-                            .setSuccess(true)
-                            .setMessage(
-                                    "Log received successfully. "
-                                            + "Total logs: "
-                                            + totalLogs
-                            )
-                            .build();
-
-            observer.onNext(response);
-            observer.onCompleted();
-
-        } catch (Exception e) {
-
-            e.printStackTrace();
-
-            observer.onNext(
-                    LogResponse.newBuilder()
-                            .setSuccess(false)
-                            .setMessage(
-                                    "Failed to store log: "
-                                            + e.getMessage()
-                            )
-                            .build()
-            );
-
-            observer.onCompleted();
+                this.luceneLogService = luceneLogService;
+                this.logRepository = logRepository;
+                this.logWebSocketHandler = logWebSocketHandler;
+                this.mapper = mapper;
         }
-    }
 
-    @Override
-    public void sendLogs(
-            BatchLogRequest request,
-            StreamObserver<LogResponse> observer) {
+        @Override
+        public void sendLog(
+                        LogRequest request,
+                        StreamObserver<LogResponse> observer) {
 
-        try {
+                try {
 
-            int count = 0;
+                        String tenant = resolveTenant(request);
 
-            for (LogRequest log :
-                    request.getLogsList()) {
+                        // 1. PostgreSQL metadata (audit / relational joins).
+                        logRepository.save(
+                                        new LogEntity(
+                                                        tenant,
+                                                        request.getTimestamp(),
+                                                        request.getLevel(),
+                                                        request.getService(),
+                                                        request.getMessage(),
+                                                        request.getHost(),
+                                                        request.getTraceId(),
+                                                        request.getErrorCode(),
+                                                        request.getResponseTime()));
 
-                LogEntity entity =
-                        new LogEntity(
-                                log.getTimestamp(),
-                                log.getLevel()
-                                        .toUpperCase(),
-                                log.getService(),
-                                log.getMessage(),
-                                log.getHost()
-                        );
+                        // 2. Lucene (buffered, committed by the scheduled flush).
+                        luceneLogService.indexLog(request, tenant);
 
-                logRepository.save(entity);
+                        // 3. WebSocket Live Tail (tenant-tagged).
+                        broadcastLog(request, tenant);
 
-                luceneLogService.indexLog(log);
+                        observer.onNext(
+                                        LogResponse.newBuilder()
+                                                        .setSuccess(true)
+                                                        .setAccepted(1)
+                                                        .setMessage("Log received successfully")
+                                                        .build());
 
-                /*
-                 * Send every log to Live Tail.
-                 */
-                broadcastLog(log);
+                        observer.onCompleted();
 
-                count++;
-            }
+                } catch (Exception e) {
 
-            long totalLogs =
-                    logRepository.count();
+                        e.printStackTrace();
 
-            observer.onNext(
-                    LogResponse.newBuilder()
-                            .setSuccess(true)
-                            .setMessage(
-                                    count
-                                            + " logs stored successfully. "
-                                            + "Total logs: "
-                                            + totalLogs
-                            )
-                            .build()
-            );
+                        observer.onNext(
+                                        LogResponse.newBuilder()
+                                                        .setSuccess(false)
+                                                        .setAccepted(0)
+                                                        .setMessage(
+                                                                        "Failed to store log: "
+                                                                                        + e.getMessage())
+                                                        .build());
 
-            observer.onCompleted();
-
-        } catch (Exception e) {
-
-            e.printStackTrace();
-
-            observer.onNext(
-                    LogResponse.newBuilder()
-                            .setSuccess(false)
-                            .setMessage(
-                                    "Batch storage failed: "
-                                            + e.getMessage()
-                            )
-                            .build()
-            );
-
-            observer.onCompleted();
+                        observer.onCompleted();
+                }
         }
-    }
 
-    @Override
-    public void searchLogs(
-            SearchRequest request,
-            StreamObserver<SearchResponse> observer) {
+        @Override
+        public void sendLogs(
+                        BatchLogRequest request,
+                        StreamObserver<LogResponse> observer) {
 
-        try {
+                try {
 
-            List<LogRequest> logs =
-                    luceneLogService.searchLogs(
-                            request.getQuery(),
-                            request.getLimit()
-                    );
+                        List<LogRequest> logs = request.getLogsList();
 
-            observer.onNext(
-                    SearchResponse.newBuilder()
-                            .addAllLogs(logs)
-                            .build()
-            );
+                        // A batch shares one tenant (the metadata-bound / first-record
+                        // tenant) so it can be indexed in a single writer operation.
+                        String tenant = logs.isEmpty()
+                                        ? TenantGrpcInterceptor.tenant()
+                                        : resolveTenant(logs.get(0));
 
-            observer.onCompleted();
+                        for (LogRequest log : logs) {
+                                logRepository.save(
+                                                new LogEntity(
+                                                                tenant,
+                                                                log.getTimestamp(),
+                                                                log.getLevel(),
+                                                                log.getService(),
+                                                                log.getMessage(),
+                                                                log.getHost(),
+                                                                log.getTraceId(),
+                                                                log.getErrorCode(),
+                                                                log.getResponseTime()));
 
-        } catch (Exception e) {
+                                broadcastLog(log, tenant);
+                        }
 
-            e.printStackTrace();
+                        int accepted = luceneLogService.indexLogs(logs, tenant);
 
-            observer.onError(e);
+                        observer.onNext(
+                                        LogResponse.newBuilder()
+                                                        .setSuccess(true)
+                                                        .setAccepted(accepted)
+                                                        .setMessage(accepted + " logs stored successfully")
+                                                        .build());
+
+                        observer.onCompleted();
+
+                } catch (Exception e) {
+
+                        e.printStackTrace();
+
+                        observer.onNext(
+                                        LogResponse.newBuilder()
+                                                        .setSuccess(false)
+                                                        .setAccepted(0)
+                                                        .setMessage(
+                                                                        "Batch storage failed: "
+                                                                                        + e.getMessage())
+                                                        .build());
+
+                        observer.onCompleted();
+                }
         }
-    }
 
-    /**
-     * Convert the gRPC log into JSON-friendly
-     * data and send it to all WebSocket clients.
-     */
-    private void broadcastLog(
-            LogRequest request) {
+        @Override
+        public void searchLogs(
+                        SearchRequest request,
+                        StreamObserver<SearchResponse> observer) {
 
-        Map<String, Object> log =
-                Map.of(
-                        "timestamp",
-                        request.getTimestamp(),
+                try {
 
-                        "level",
-                        request.getLevel(),
+                        // The gRPC thread is not covered by TenantContextFilter, so bind
+                        // the tenant carried in metadata to the ThreadLocal for the query.
+                        String tenant = TenantGrpcInterceptor.tenant();
+                        TenantContext.set(tenant);
 
-                        "service",
-                        request.getService(),
+                        try {
 
-                        "message",
-                        request.getMessage(),
+                                SearchResult result = luceneLogService.search(
+                                                request.getQuery(),
+                                                request.getLevel(),
+                                                request.getService(),
+                                                request.getLimit(),
+                                                request.getFrom());
 
-                        "host",
-                        request.getHost()
-                );
+                                SearchResponse.Builder builder = SearchResponse.newBuilder()
+                                                .setTotalHits(result.totalHits())
+                                                .setTookMs(result.tookMs());
 
-        logWebSocketHandler.broadcast(log);
-    }
+                                for (LogHit hit : result.hits()) {
+                                        builder.addLogs(mapper.toProto(hit));
+                                }
 
-    private void printLog(
-            LogRequest request) {
+                                observer.onNext(builder.build());
+                                observer.onCompleted();
 
-        System.out.println();
-        System.out.println(
-                "========================================"
-        );
-        System.out.println("LOG RECEIVED");
-        System.out.println(
-                "========================================"
-        );
+                        } finally {
+                                TenantContext.clear();
+                        }
 
-        System.out.println(
-                "Timestamp : "
-                        + request.getTimestamp()
-        );
+                } catch (Exception e) {
 
-        System.out.println(
-                "Level     : "
-                        + request.getLevel()
-        );
+                        e.printStackTrace();
+                        observer.onError(e);
+                }
+        }
 
-        System.out.println(
-                "Service   : "
-                        + request.getService()
-        );
+        /**
+         * Resolves the effective tenant: metadata (bound by the interceptor) wins,
+         * then the record's own field, then the default tenant.
+         */
+        private String resolveTenant(LogRequest request) {
 
-        System.out.println(
-                "Message   : "
-                        + request.getMessage()
-        );
+                String fromMetadata = TenantGrpcInterceptor.tenant();
 
-        System.out.println(
-                "Host      : "
-                        + request.getHost()
-        );
-    }
+                if (fromMetadata != null
+                                && !TenantContext.DEFAULT_TENANT.equals(fromMetadata)) {
+                        return fromMetadata;
+                }
+
+                String fromRecord = request.getTenantId();
+
+                if (fromRecord != null && TenantContext.isValid(fromRecord)) {
+                        return TenantContext.normalize(fromRecord);
+                }
+
+                return fromMetadata == null
+                                ? TenantContext.DEFAULT_TENANT
+                                : fromMetadata;
+        }
+
+        /**
+         * Converts the gRPC log into JSON-friendly data and sends it to all
+         * WebSocket clients. The record is tagged with {@code _tenant} so the Live
+         * Tail UI can filter to the active tenant.
+         */
+        private void broadcastLog(
+                        LogRequest request,
+                        String tenant) {
+
+                Map<String, Object> log = new LinkedHashMap<>();
+                log.put("tenant", tenant);
+                log.put("timestamp", request.getTimestamp());
+                log.put("level", request.getLevel());
+                log.put("service", request.getService());
+                log.put("message", request.getMessage());
+                log.put("host", request.getHost());
+                log.put("traceId", request.getTraceId());
+                log.put("errorCode", request.getErrorCode());
+                log.put("responseTime", request.getResponseTime());
+                log.put("createdAt", LocalDateTime.now().toString());
+
+                logWebSocketHandler.broadcast(log);
+        }
 }

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Registers os-maven-plugin as a Maven core extension so that the
+    ${os.detected.classifier} property (used by protobuf-maven-plugin for the
+    protoc / protoc-gen-grpc-java binaries) is resolved by BOTH the command-line
+    build and IDE tooling such as m2e. Without this, m2e reports:
+        Failed to execute mojo protobuf:...:compile
+        Unable to resolve artifact: com.google.protobuf:protoc:exe:${os.detected.classifier}
+-->
+<extensions xmlns="http://maven.apache.org/EXTENSIONS/1.0.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://maven.apache.org/EXTENSIONS/1.0.0
+                                https://maven.apache.org/xsd/core-extensions-1.0.0.xsd">
+    <extension>
+        <groupId>kr.motd.maven</groupId>
+        <artifactId>os-maven-plugin</artifactId>
+        <version>1.7.1</version>
+    </extension>
+</extensions>

@@ -1,0 +1,68 @@
+.tenant-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+    margin: 0 12px 12px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.55);
+}
+
+.tenant-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.tenant-select,
+.tenant-input {
+    width: 100%;
+    padding: 7px 9px;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(2, 6, 23, 0.65);
+    color: #e2e8f0;
+    font-size: 13px;
+    outline: none;
+}
+
+.tenant-select:focus,
+.tenant-input:focus {
+    border-color: #38bdf8;
+}
+
+.tenant-custom-row {
+    display: flex;
+    gap: 6px;
+}
+
+.tenant-apply {
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    background: rgba(56, 189, 248, 0.14);
+    color: #7dd3fc;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.tenant-apply:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.tenant-active {
+    font-size: 11px;
+    color: #64748b;
+}
+
+.tenant-active strong {
+    color: #38bdf8;
+}

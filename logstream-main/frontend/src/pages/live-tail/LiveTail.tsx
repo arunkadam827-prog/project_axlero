@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play, Trash2, Wifi, WifiOff } from "lucide-react";
-import { WS_URL, type LogItem } from "../../services/api";
+import { WS_URL, getTenant, type LogItem } from "../../services/api";
 import "./LiveTail.css";
 
 function levelClass(level: string) {
@@ -39,10 +39,14 @@ function LiveTail() {
         try {
           const data = JSON.parse(event.data) as LogItem & {
             type?: string;
+            tenant?: string;
           };
 
           if (data.type === "connection") return;
           if (pausedRef.current) return;
+
+          // Only surface events belonging to the active tenant.
+          if (data.tenant && data.tenant !== getTenant()) return;
 
           setLogs((current) => [data, ...current].slice(0, 500));
         } catch {

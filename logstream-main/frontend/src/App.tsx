@@ -7,6 +7,7 @@ import Logs from "./pages/logs/Logs";
 import LiveTail from "./pages/live-tail/LiveTail";
 import Analytics from "./pages/analytics/Analytics";
 import Alerts from "./pages/alerts/Alerts";
+import Services from "./pages/services/Services";
 import Settings from "./pages/settings/Settings";
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
           <Route path="/live" element={<LiveTail />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/alerts" element={<Alerts />} />
+          <Route path="/services" element={<Services />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </MainLayout>

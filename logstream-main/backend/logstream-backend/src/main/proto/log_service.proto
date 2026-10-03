@@ -7,14 +7,24 @@ option java_package = "com.logstream.grpc";
 option java_outer_classname = "LogServiceProto";
 
 
+/*
+ * High-throughput log ingestion + search contract.
+ *
+ * Every record is scoped to a tenant. The canonical tenant is carried in
+ * BOTH the gRPC metadata key "tenant-id" and the LogRecord.tenant_id field;
+ * the metadata value wins when present (it is bound by TenantServerInterceptor).
+ */
 service LogService {
 
+    // Single-record ingestion (convenience / low volume).
     rpc SendLog(LogRequest)
             returns (LogResponse);
 
+    // Batched ingestion (preferred for throughput).
     rpc SendLogs(BatchLogRequest)
             returns (LogResponse);
 
+    // Ad-hoc search over the tenant's Lucene index.
     rpc SearchLogs(SearchRequest)
             returns (SearchResponse);
 }
@@ -31,6 +41,23 @@ message LogRequest {
     string message = 4;
 
     string host = 5;
+
+    // ---- Extended fields (multi-tenancy + observability) ----
+
+    // Owning tenant. Falls back to metadata "tenant-id" / "default".
+    string tenant_id = 6;
+
+    // Distributed tracing correlation id.
+    string trace_id = 7;
+
+    // Request/operation duration in milliseconds (for range queries).
+    int64 response_time = 8;
+
+    // Application error code, e.g. "DB_TIMEOUT".
+    string error_code = 9;
+
+    // Free-form labels (region, pod, env, ...).
+    map<string, string> metadata = 10;
 }
 
 
@@ -45,6 +72,9 @@ message LogResponse {
     bool success = 1;
 
     string message = 2;
+
+    // Number of records accepted in this call.
+    int32 accepted = 3;
 }
 
 
@@ -53,10 +83,24 @@ message SearchRequest {
     string query = 1;
 
     int32 limit = 2;
+
+    // Optional convenience filters (merged with `query`).
+    string level = 3;
+
+    string service = 4;
+
+    // Zero-based offset for pagination.
+    int32 from = 5;
 }
 
 
 message SearchResponse {
 
     repeated LogRequest logs = 1;
+
+    // Total matching documents (may exceed `logs` due to limit).
+    int64 total_hits = 2;
+
+    // Server-side execution time in milliseconds.
+    int64 took_ms = 3;
 }

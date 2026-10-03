@@ -10,7 +10,17 @@ import {
 
 import { NavLink } from "react-router-dom";
 
+import TenantSelector from "../tenant/TenantSelector";
 import "./Sidebar.css";
+
+const NAV_ITEMS = [
+  { to: "/overview", label: "Overview", icon: LayoutDashboard },
+  { to: "/logs", label: "Logs", icon: FileText },
+  { to: "/live", label: "Live Tail", icon: Radio },
+  { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/alerts", label: "Alerts", icon: Bell },
+  { to: "/services", label: "Services", icon: Server },
+];
 
 function Sidebar() {
   return (
@@ -21,62 +31,32 @@ function Sidebar() {
       </div>
 
       <nav className="sidebar-nav">
-        <NavLink
-          to="/overview"
-          className={({ isActive }) =>
-            `sidebar-item ${isActive ? "active" : ""}`
-          }
-        >
-          <LayoutDashboard size={18} />
-          Overview
-        </NavLink>
-
-        <NavLink
-          to="/logs"
-          className={({ isActive }) =>
-            `sidebar-item ${isActive ? "active" : ""}`
-          }
-        >
-          <FileText size={18} />
-          Logs
-        </NavLink>
-
-        <NavLink
-          to="/live"
-          className={({ isActive }) =>
-            `sidebar-item ${isActive ? "active" : ""}`
-          }
-        >
-          <Radio size={18} />
-          Live Tail
-        </NavLink>
-
-        <NavLink
-  to="/analytics"
-  className={({ isActive }) =>
-    `sidebar-item ${isActive ? "active" : ""}`
-  }
->
-  <BarChart3 size={18} />
-  Analytics
-</NavLink>
-
-        <button className="sidebar-item">
-          <Bell size={18} />
-          Alerts
-        </button>
-
-        <button className="sidebar-item">
-          <Server size={18} />
-          Services
-        </button>
+        {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) =>
+              `sidebar-item ${isActive ? "active" : ""}`
+            }
+          >
+            <Icon size={18} />
+            {label}
+          </NavLink>
+        ))}
       </nav>
 
       <div className="sidebar-bottom">
-        <button className="sidebar-item">
+        <TenantSelector />
+
+        <NavLink
+          to="/settings"
+          className={({ isActive }) =>
+            `sidebar-item ${isActive ? "active" : ""}`
+          }
+        >
           <Settings size={18} />
           Settings
-        </button>
+        </NavLink>
       </div>
     </aside>
   );

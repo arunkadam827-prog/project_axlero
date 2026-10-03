@@ -1,9 +1,43 @@
 import ReactECharts from "echarts-for-react";
 
-function ErrorRateChart() {
+import type { HistogramBucket } from "../../services/api";
+
+interface ErrorRateChartProps {
+  /** Total logs per time bucket. */
+  buckets?: HistogramBucket[];
+  /** Error-only logs per time bucket (same labels as `buckets`). */
+  errorBuckets?: HistogramBucket[];
+  height?: number;
+}
+
+/**
+ * Error-rate percentage over time computed from two histogram series
+ * (total vs. level:ERROR). Values are derived, never hardcoded.
+ */
+function ErrorRateChart({
+  buckets = [],
+  errorBuckets = [],
+  height = 300,
+}: ErrorRateChartProps) {
+  const errorByLabel = new Map(
+    errorBuckets.map((bucket) => [bucket.label, bucket.count])
+  );
+
+  const labels = buckets.map((bucket) => bucket.label);
+
+  const series = buckets.map((bucket) => {
+    const errors = errorByLabel.get(bucket.label) ?? 0;
+    if (bucket.count === 0) return 0;
+    return Number(((errors / bucket.count) * 100).toFixed(2));
+  });
+
   const option = {
     tooltip: {
       trigger: "axis",
+      backgroundColor: "#0b1220",
+      borderColor: "#1f2937",
+      textStyle: { color: "#e2e8f0" },
+      valueFormatter: (value: number) => `${value}%`,
     },
 
     grid: {
@@ -16,36 +50,16 @@ function ErrorRateChart() {
 
     xAxis: {
       type: "category",
-      data: [
-        "00:00",
-        "04:00",
-        "08:00",
-        "12:00",
-        "16:00",
-        "20:00",
-        "24:00",
-      ],
-      axisLabel: {
-        color: "#64748b",
-      },
-      axisLine: {
-        lineStyle: {
-          color: "#1f2937",
-        },
-      },
+      data: labels,
+      axisLabel: { color: "#64748b" },
+      axisLine: { lineStyle: { color: "#1f2937" } },
     },
 
     yAxis: {
       type: "value",
       name: "%",
-      axisLabel: {
-        color: "#64748b",
-      },
-      splitLine: {
-        lineStyle: {
-          color: "#1f2937",
-        },
-      },
+      axisLabel: { color: "#64748b" },
+      splitLine: { lineStyle: { color: "#1f2937" } },
     },
 
     series: [
@@ -53,20 +67,11 @@ function ErrorRateChart() {
         name: "Error Rate",
         type: "line",
         smooth: true,
-        data: [1.2, 1.5, 1.1, 1.8, 2.4, 1.9, 1.65],
-
-        lineStyle: {
-          width: 3,
-          color: "#ef4444",
-        },
-
-        itemStyle: {
-          color: "#ef4444",
-        },
-
-        areaStyle: {
-          opacity: 0.08,
-        },
+        showSymbol: false,
+        data: series,
+        lineStyle: { width: 3, color: "#ef4444" },
+        itemStyle: { color: "#ef4444" },
+        areaStyle: { opacity: 0.08, color: "#ef4444" },
       },
     ],
   };
@@ -74,7 +79,7 @@ function ErrorRateChart() {
   return (
     <ReactECharts
       option={option}
-      style={{ height: "300px", width: "100%" }}
+      style={{ height, width: "100%" }}
     />
   );
 }

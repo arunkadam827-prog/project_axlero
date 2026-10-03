@@ -9,4 +9,8 @@ public interface AlertRuleRepository
         extends JpaRepository<AlertRule, Long> {
 
     List<AlertRule> findByEnabledTrue();
+
+    List<AlertRule> findAllByTenantId(String tenantId);
+
+    List<AlertRule> findAllByTenantIdAndEnabledTrue(String tenantId);
 }

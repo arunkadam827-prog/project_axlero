@@ -1,9 +1,28 @@
 import ReactECharts from "echarts-for-react";
 
-function LogVolumeChart() {
+import type { HistogramBucket } from "../../services/api";
+
+interface LogVolumeChartProps {
+  buckets?: HistogramBucket[];
+  height?: number;
+  color?: string;
+}
+
+/**
+ * Time-series log volume chart backed by the Lucene range-facet histogram
+ * endpoint. Falls back to an empty axis when no data is available yet.
+ */
+function LogVolumeChart({
+  buckets = [],
+  height = 300,
+  color = "#38bdf8",
+}: LogVolumeChartProps) {
   const option = {
     tooltip: {
       trigger: "axis",
+      backgroundColor: "#0b1220",
+      borderColor: "#1f2937",
+      textStyle: { color: "#e2e8f0" },
     },
 
     grid: {
@@ -16,20 +35,15 @@ function LogVolumeChart() {
 
     xAxis: {
       type: "category",
-      data: [
-        "14:00",
-        "14:05",
-        "14:10",
-        "14:15",
-        "14:20",
-        "14:25",
-        "14:30",
-        "14:35",
-      ],
+      data: buckets.map((bucket) => bucket.label),
+      axisLabel: { color: "#64748b" },
+      axisLine: { lineStyle: { color: "#1f2937" } },
     },
 
     yAxis: {
       type: "value",
+      axisLabel: { color: "#64748b" },
+      splitLine: { lineStyle: { color: "#1f2937" } },
     },
 
     series: [
@@ -37,12 +51,16 @@ function LogVolumeChart() {
         name: "Logs",
         type: "line",
         smooth: true,
-        data: [120, 180, 150, 260, 220, 310, 280, 360],
+        showSymbol: false,
+        data: buckets.map((bucket) => bucket.count),
+        lineStyle: { width: 2, color },
+        itemStyle: { color },
+        areaStyle: { opacity: 0.12, color },
       },
     ],
   };
 
-  return <ReactECharts option={option} style={{ height: "300px" }} />;
+  return <ReactECharts option={option} style={{ height }} />;
 }
 
 export default LogVolumeChart;

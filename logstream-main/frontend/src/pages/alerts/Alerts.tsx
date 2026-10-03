@@ -1,68 +1,56 @@
+import { useCallback, useEffect, useState } from "react";
 
-import { useEffect, useState } from "react";
+import {
+  createAlertRule,
+  deleteAlertRule,
+  evaluateAlerts,
+  getAlertHistory,
+  getAlertRules,
+  getCurrentAlerts,
+  updateAlertRule,
+  type AlertEvent,
+  type AlertRule,
+  type CurrentAlert,
+} from "../../services/api";
 import "./Alerts.css";
 
-const API_BASE = "http://localhost:8080";
-
-type AlertRule = {
-  id?: number;
-  name: string;
-  service: string;
-  level: string;
-  threshold: number;
-  windowMinutes: number;
-  enabled: boolean;
+const EMPTY_FORM: AlertRule = {
+  name: "",
+  service: "",
+  level: "",
+  query: "",
+  severity: "warning",
+  channel: "email",
+  webhookUrl: "",
+  threshold: 5,
+  timeWindowMinutes: 5,
+  enabled: true,
 };
 
-type CurrentAlert = {
-  id?: number;
-  ruleName?: string;
-  service?: string;
-  level?: string;
-  count?: number;
-  threshold?: number;
-  message?: string;
-  triggeredAt?: string;
-};
+function levelClass(level?: string): string {
+  return (level || "info").toLowerCase();
+}
 
 export default function Alerts() {
   const [rules, setRules] = useState<AlertRule[]>([]);
   const [alerts, setAlerts] = useState<CurrentAlert[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState<AlertEvent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [form, setForm] = useState<AlertRule>(EMPTY_FORM);
 
-  const [form, setForm] = useState<AlertRule>({
-    name: "",
-    service: "",
-    level: "ERROR",
-    threshold: 5,
-    windowMinutes: 5,
-    enabled: true,
-  });
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
-      setLoading(true);
-      setError("");
-
-      const [rulesResponse, alertsResponse] = await Promise.all([
-        fetch(`${API_BASE}/api/alerts/rules`),
-        fetch(`${API_BASE}/api/alerts/current`),
+      const [rulesData, currentData, historyData] = await Promise.all([
+        getAlertRules(),
+        getCurrentAlerts(),
+        getAlertHistory(),
       ]);
 
-      if (!rulesResponse.ok) {
-        throw new Error("Failed to load alert rules");
-      }
-
-      if (!alertsResponse.ok) {
-        throw new Error("Failed to load current alerts");
-      }
-
-      const rulesData = await rulesResponse.json();
-      const alertsData = await alertsResponse.json();
-
-      setRules(Array.isArray(rulesData) ? rulesData : []);
-      setAlerts(Array.isArray(alertsData) ? alertsData : []);
+      setRules(rulesData);
+      setAlerts(currentData.alerts);
+      setHistory(historyData);
+      setError("");
     } catch (err) {
       setError(
         err instanceof Error
@@ -72,15 +60,18 @@ export default function Alerts() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadData();
-
+    // Defer the initial load so the effect does not call setState
+    // synchronously (which would trigger a cascading render on mount).
+    const kickoff = window.setTimeout(loadData, 0);
     const timer = window.setInterval(loadData, 10000);
-
-    return () => window.clearInterval(timer);
-  }, []);
+    return () => {
+      window.clearTimeout(kickoff);
+      window.clearInterval(timer);
+    };
+  }, [loadData]);
 
   const createRule = async () => {
     if (!form.name.trim()) {
@@ -88,42 +79,19 @@ export default function Alerts() {
       return;
     }
 
-    if (!form.service.trim()) {
-      setError("Service is required");
+    if (!form.query.trim() && !form.service.trim() && !form.level) {
+      setError("Provide a query or at least a service/level filter");
       return;
     }
 
     try {
       setError("");
-
-      const response = await fetch(`${API_BASE}/api/alerts/rules`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || "Failed to create alert rule");
-      }
-
-      setForm({
-        name: "",
-        service: "",
-        level: "ERROR",
-        threshold: 5,
-        windowMinutes: 5,
-        enabled: true,
-      });
-
+      await createAlertRule(form);
+      setForm(EMPTY_FORM);
       await loadData();
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to create alert rule"
+        err instanceof Error ? err.message : "Failed to create alert rule"
       );
     }
   };
@@ -132,59 +100,36 @@ export default function Alerts() {
     if (!rule.id) return;
 
     try {
-      const response = await fetch(
-        `${API_BASE}/api/alerts/rules/${rule.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...rule,
-            enabled: !rule.enabled,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to update alert rule");
-      }
-
+      await updateAlertRule(rule.id, { ...rule, enabled: !rule.enabled });
       await loadData();
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to update alert rule"
+        err instanceof Error ? err.message : "Failed to update alert rule"
       );
     }
   };
 
   const deleteRule = async (id?: number) => {
     if (!id) return;
-
-    if (!window.confirm("Delete this alert rule?")) {
-      return;
-    }
+    if (!window.confirm("Delete this alert rule?")) return;
 
     try {
-      const response = await fetch(
-        `${API_BASE}/api/alerts/rules/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to delete alert rule");
-      }
-
+      await deleteAlertRule(id);
       await loadData();
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to delete alert rule"
+        err instanceof Error ? err.message : "Failed to delete alert rule"
+      );
+    }
+  };
+
+  const runEvaluation = async () => {
+    try {
+      await evaluateAlerts();
+      await loadData();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to evaluate alerts"
       );
     }
   };
@@ -194,12 +139,20 @@ export default function Alerts() {
       <div className="page-title">
         <div>
           <h1>Alerts</h1>
-          <p>Configure log thresholds and monitor triggered alerts.</p>
+          <p>
+            Query-based alerting rules evaluated against your tenant's live log
+            index.
+          </p>
         </div>
 
-        <button className="refresh-btn" onClick={loadData}>
-          {loading ? "Refreshing..." : "Refresh"}
-        </button>
+        <div className="page-actions">
+          <button className="refresh-btn" onClick={runEvaluation}>
+            Evaluate now
+          </button>
+          <button className="refresh-btn" onClick={loadData}>
+            {loading ? "Refreshing..." : "Refresh"}
+          </button>
+        </div>
       </div>
 
       {error && <div className="alert-error">{error}</div>}
@@ -217,9 +170,7 @@ export default function Alerts() {
 
         <div className="alert-summary-card">
           <span>Enabled Rules</span>
-          <strong>
-            {rules.filter((rule) => rule.enabled).length}
-          </strong>
+          <strong>{rules.filter((rule) => rule.enabled).length}</strong>
         </div>
       </div>
 
@@ -235,44 +186,74 @@ export default function Alerts() {
               <input
                 value={form.name}
                 placeholder="High Error Rate"
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    name: e.target.value,
-                  })
-                }
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </label>
 
             <label>
-              Service
+              Query (LogStream expression)
+              <input
+                value={form.query}
+                placeholder="level:ERROR AND response_time > 1000"
+                onChange={(e) => setForm({ ...form, query: e.target.value })}
+              />
+            </label>
+
+            <label>
+              Service (optional)
               <input
                 value={form.service}
                 placeholder="billing-api"
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    service: e.target.value,
-                  })
-                }
+                onChange={(e) => setForm({ ...form, service: e.target.value })}
               />
             </label>
 
             <label>
-              Log Level
+              Log Level (optional)
               <select
                 value={form.level}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    level: e.target.value,
-                  })
-                }
+                onChange={(e) => setForm({ ...form, level: e.target.value })}
               >
+                <option value="">Any</option>
                 <option value="ERROR">ERROR</option>
                 <option value="WARNING">WARNING</option>
                 <option value="INFO">INFO</option>
               </select>
+            </label>
+
+            <label>
+              Severity
+              <select
+                value={form.severity}
+                onChange={(e) => setForm({ ...form, severity: e.target.value })}
+              >
+                <option value="info">info</option>
+                <option value="warning">warning</option>
+                <option value="critical">critical</option>
+              </select>
+            </label>
+
+            <label>
+              Channel
+              <select
+                value={form.channel}
+                onChange={(e) => setForm({ ...form, channel: e.target.value })}
+              >
+                <option value="email">email</option>
+                <option value="webhook">webhook</option>
+                <option value="both">both</option>
+              </select>
+            </label>
+
+            <label>
+              Webhook URL
+              <input
+                value={form.webhookUrl}
+                placeholder="https://hooks.example.com/..."
+                onChange={(e) =>
+                  setForm({ ...form, webhookUrl: e.target.value })
+                }
+              />
             </label>
 
             <label>
@@ -282,10 +263,7 @@ export default function Alerts() {
                 min="1"
                 value={form.threshold}
                 onChange={(e) =>
-                  setForm({
-                    ...form,
-                    threshold: Number(e.target.value),
-                  })
+                  setForm({ ...form, threshold: Number(e.target.value) })
                 }
               />
             </label>
@@ -295,11 +273,11 @@ export default function Alerts() {
               <input
                 type="number"
                 min="1"
-                value={form.windowMinutes}
+                value={form.timeWindowMinutes}
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    windowMinutes: Number(e.target.value),
+                    timeWindowMinutes: Number(e.target.value),
                   })
                 }
               />
@@ -310,10 +288,7 @@ export default function Alerts() {
                 type="checkbox"
                 checked={form.enabled}
                 onChange={(e) =>
-                  setForm({
-                    ...form,
-                    enabled: e.target.checked,
-                  })
+                  setForm({ ...form, enabled: e.target.checked })
                 }
               />
               Enabled
@@ -328,10 +303,7 @@ export default function Alerts() {
         <section className="alert-panel">
           <div className="panel-title">
             <h2>Current Alerts</h2>
-
-            <span className="active-count">
-              {alerts.length} active
-            </span>
+            <span className="active-count">{alerts.length} active</span>
           </div>
 
           {alerts.length === 0 ? (
@@ -345,28 +317,49 @@ export default function Alerts() {
           ) : (
             <div className="current-alerts">
               {alerts.map((alert, index) => (
-                <div className="current-alert" key={alert.id ?? index}>
+                <div className="current-alert" key={alert.ruleId ?? index}>
                   <div className="alert-icon">!</div>
 
                   <div className="current-alert-content">
-                    <strong>
-                      {alert.ruleName || "Alert Triggered"}
-                    </strong>
+                    <strong>{alert.ruleName || "Alert Triggered"}</strong>
 
-                    <span>
-                      {alert.message ||
-                        `${alert.service || "service"} has exceeded the configured threshold.`}
-                    </span>
+                    <span>{alert.message || "Threshold exceeded."}</span>
 
+                    <small>severity: {alert.severity || "warning"}</small>
+
+                    {alert.firedAt && <small>{alert.firedAt}</small>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="panel-title history-title">
+            <h2>Recent History</h2>
+          </div>
+
+          {history.length === 0 ? (
+            <div className="alert-empty">
+              <span>No alert events recorded yet.</span>
+            </div>
+          ) : (
+            <div className="current-alerts">
+              {history.slice(0, 8).map((event, index) => (
+                <div className="current-alert" key={event.id ?? index}>
+                  <div
+                    className={`alert-icon ${(event.state || "").toLowerCase()}`}
+                  >
+                    {event.state === "CLEARED" ? "✓" : "!"}
+                  </div>
+
+                  <div className="current-alert-content">
+                    <strong>{event.ruleName || "Rule"}</strong>
+                    <span>{event.message}</span>
                     <small>
-                      {alert.level || "ERROR"} · Count:{" "}
-                      {alert.count ?? 0} / Threshold:{" "}
-                      {alert.threshold ?? 0}
+                      {event.state} · {event.observedCount ?? 0}/
+                      {event.threshold ?? 0}
+                      {event.createdAt ? ` · ${event.createdAt}` : ""}
                     </small>
-
-                    {alert.triggeredAt && (
-                      <small>{alert.triggeredAt}</small>
-                    )}
                   </div>
                 </div>
               ))}
@@ -392,10 +385,11 @@ export default function Alerts() {
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th>Service</th>
-                  <th>Level</th>
+                  <th>Query</th>
+                  <th>Severity</th>
                   <th>Threshold</th>
                   <th>Window</th>
+                  <th>Channel</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
@@ -408,27 +402,29 @@ export default function Alerts() {
 
                     <td>
                       <span className="service-name">
-                        {rule.service}
+                        {rule.query ||
+                          [rule.service, rule.level]
+                            .filter(Boolean)
+                            .join(" / ")}
                       </span>
                     </td>
 
                     <td>
-                      <span
-                        className={`level-badge ${rule.level.toLowerCase()}`}
-                      >
-                        {rule.level}
+                      <span className={`level-badge ${levelClass(rule.severity)}`}>
+                        {rule.severity}
                       </span>
                     </td>
 
                     <td>{rule.threshold}</td>
 
-                    <td>{rule.windowMinutes} min</td>
+                    <td>{rule.timeWindowMinutes} min</td>
+
+                    <td>{rule.channel}</td>
 
                     <td>
                       <button
-                        className={`rule-status ${
-                          rule.enabled ? "enabled" : "disabled"
-                        }`}
+                        className={`rule-status ${rule.enabled ? "enabled" : "disabled"
+                          }`}
                         onClick={() => toggleRule(rule)}
                       >
                         {rule.enabled ? "Enabled" : "Disabled"}
@@ -453,4 +449,3 @@ export default function Alerts() {
     </div>
   );
 }
-

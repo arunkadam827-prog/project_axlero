@@ -2,299 +2,181 @@ package logstream_backend.service;
 
 import com.logstream.grpc.LogRequest;
 
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import logstream_backend.search.LogDocumentMapper;
+import logstream_backend.search.LogHit;
+import logstream_backend.search.LogQueryParser;
+import logstream_backend.search.LuceneIndexManager;
+import logstream_backend.search.SearchResult;
+import logstream_backend.tenant.TenantContext;
+
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FSDirectory;
+
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Tenant-scoped read/write facade over the Lucene index.
+ *
+ * <p>
+ * <strong>Throughput note.</strong> This class used to open (and commit) a
+ * brand
+ * new {@link IndexWriter} for every single document, which forced a segment
+ * refresh per log and capped ingestion at a few hundred logs/sec. It now
+ * delegates to {@link LuceneIndexManager}, which keeps one long-lived writer
+ * per tenant with an in-memory buffer — the single most important change for
+ * reaching the 10,000 logs/sec target. See {@code docs/INDEXING_STRATEGY.md}
+ * §3.4.
+ * </p>
+ *
+ * <p>
+ * The public method signatures are preserved for backward compatibility with
+ * {@code LogController} / {@code LogServiceImpl}, but every path is now scoped
+ * to the tenant resolved from {@link TenantContext}.
+ * </p>
+ */
 @Service
 public class LuceneLogService {
 
-    private static final String INDEX_PATH = "logs/lucene-index";
+        private final LuceneIndexManager indexManager;
+        private final LogDocumentMapper mapper;
+        private final LogQueryParser queryParser;
 
-    private final StandardAnalyzer analyzer;
-    private final Directory directory;
+        public LuceneLogService(
+                        LuceneIndexManager indexManager,
+                        LogDocumentMapper mapper,
+                        LogQueryParser queryParser) {
 
-    public LuceneLogService() throws IOException {
-
-        analyzer = new StandardAnalyzer();
-
-        Path indexPath = Path.of(INDEX_PATH);
-
-        directory = FSDirectory.open(indexPath);
-
-        System.out.println(
-                "Lucene initialized: "
-                        + indexPath.toAbsolutePath()
-        );
-    }
-
-    /**
-     * Add one log to Lucene.
-     */
-    public synchronized void indexLog(LogRequest request)
-            throws IOException {
-
-        IndexWriterConfig config =
-                new IndexWriterConfig(analyzer);
-
-        try (IndexWriter writer =
-                     new IndexWriter(directory, config)) {
-
-            Document document = new Document();
-
-            document.add(
-                    new StringField(
-                            "timestamp",
-                            request.getTimestamp(),
-                            StringField.Store.YES
-                    )
-            );
-
-            document.add(
-                    new StringField(
-                            "level",
-                            request.getLevel().toUpperCase(),
-                            StringField.Store.YES
-                    )
-            );
-
-            document.add(
-                    new StringField(
-                            "service",
-                            request.getService(),
-                            StringField.Store.YES
-                    )
-            );
-
-            document.add(
-                    new TextField(
-                            "message",
-                            request.getMessage(),
-                            TextField.Store.YES
-                    )
-            );
-
-            document.add(
-                    new StringField(
-                            "host",
-                            request.getHost(),
-                            StringField.Store.YES
-                    )
-            );
-
-            writer.addDocument(document);
-            writer.commit();
+                this.indexManager = indexManager;
+                this.mapper = mapper;
+                this.queryParser = queryParser;
         }
 
-        System.out.println(
-                "LUCENE INDEXED | service="
-                        + request.getService()
-                        + " | level="
-                        + request.getLevel()
-                        + " | message="
-                        + request.getMessage()
-        );
-    }
-
-    /**
-     * Search logs using message + optional filters.
-     */
-    public synchronized List<LogRequest> searchLogs(
-            String queryText,
-            String level,
-            String service,
-            int limit) throws Exception {
-
-        List<LogRequest> results = new ArrayList<>();
-
-        if (!DirectoryReader.indexExists(directory)) {
-            return results;
+        /** Indexes one log for the current tenant (buffered, no commit). */
+        public void indexLog(LogRequest request) throws IOException {
+                indexLog(request, TenantContext.get());
         }
 
-        if (limit <= 0) {
-            limit = 100;
+        /**
+         * Indexes one log for an explicit tenant. Does <em>not</em> commit: the
+         * caller (or a scheduled flush) controls durability so many documents share
+         * a single segment write.
+         */
+        public void indexLog(LogRequest request, String tenant) throws IOException {
+
+                IndexWriter writer = indexManager.writer(tenant);
+                Document document = mapper.toDocument(request, tenant);
+                writer.addDocument(document);
         }
 
-        // Prevent an excessively large browser request.
-        limit = Math.min(limit, 500);
+        /** Indexes a batch in one writer operation, then commits once. */
+        public int indexLogs(List<LogRequest> requests, String tenant) throws IOException {
 
-        try (DirectoryReader reader =
-                     DirectoryReader.open(directory)) {
+                if (requests == null || requests.isEmpty()) {
+                        return 0;
+                }
 
-            IndexSearcher searcher =
-                    new IndexSearcher(reader);
-
-            BooleanQuery.Builder builder =
-                    new BooleanQuery.Builder();
-
-            /*
-             * Message search
-             */
-            if (queryText != null && !queryText.isBlank()) {
-
-                QueryParser parser =
-                        new QueryParser(
-                                "message",
-                                analyzer
-                        );
-
-                Query messageQuery =
-                        parser.parse(
-                                QueryParser.escape(
-                                        queryText.trim()
-                                )
-                        );
-
-                builder.add(
-                        messageQuery,
-                        BooleanClause.Occur.MUST
-                );
-
-            } else {
-
-                builder.add(
-                        new MatchAllDocsQuery(),
-                        BooleanClause.Occur.MUST
-                );
-            }
-
-            /*
-             * Level filter
-             */
-            if (level != null
-                    && !level.isBlank()
-                    && !level.equalsIgnoreCase("ALL")) {
-
-                builder.add(
-                        new TermQuery(
-                                new Term(
-                                        "level",
-                                        level.toUpperCase()
-                                )
-                        ),
-                        BooleanClause.Occur.FILTER
-                );
-            }
-
-            /*
-             * Service filter
-             */
-            if (service != null
-                    && !service.isBlank()
-                    && !service.equalsIgnoreCase("ALL")) {
-
-                builder.add(
-                        new TermQuery(
-                                new Term(
-                                        "service",
-                                        service
-                                )
-                        ),
-                        BooleanClause.Occur.FILTER
-                );
-            }
-
-            Query finalQuery = builder.build();
-
-            TopDocs topDocs =
-                    searcher.search(finalQuery, limit);
-
-            for (ScoreDoc scoreDoc :
-                    topDocs.scoreDocs) {
-
-                Document document =
-                        searcher.storedFields()
-                                .document(scoreDoc.doc);
-
-                LogRequest log =
-                        LogRequest.newBuilder()
-                                .setTimestamp(
-                                        valueOrEmpty(
-                                                document.get("timestamp")
-                                        )
-                                )
-                                .setLevel(
-                                        valueOrEmpty(
-                                                document.get("level")
-                                        )
-                                )
-                                .setService(
-                                        valueOrEmpty(
-                                                document.get("service")
-                                        )
-                                )
-                                .setMessage(
-                                        valueOrEmpty(
-                                                document.get("message")
-                                        )
-                                )
-                                .setHost(
-                                        valueOrEmpty(
-                                                document.get("host")
-                                        )
-                                )
-                                .build();
-
-                results.add(log);
-            }
+                IndexWriter writer = indexManager.writer(tenant);
+                int accepted = 0;
+                for (LogRequest request : requests) {
+                        writer.addDocument(mapper.toDocument(request, tenant));
+                        accepted++;
+                }
+                indexManager.commit(tenant);
+                return accepted;
         }
 
-        return results;
-    }
-
-    /**
-     * Backward-compatible search method.
-     */
-    public synchronized List<LogRequest> searchLogs(
-            String queryText,
-            int limit) throws Exception {
-
-        return searchLogs(
-                queryText,
-                null,
-                null,
-                limit
-        );
-    }
-
-    public synchronized int getTotalLogs()
-            throws IOException {
-
-        if (!DirectoryReader.indexExists(directory)) {
-            return 0;
+        /** Flushes buffered documents for the current tenant. */
+        public void commit(String tenant) throws IOException {
+                indexManager.commit(tenant);
         }
 
-        try (DirectoryReader reader =
-                     DirectoryReader.open(directory)) {
-
-            return reader.numDocs();
+        /**
+         * Drops and recreates a tenant's Lucene index. Used only by the
+         * development seeder so aged-out sample data can be replaced by a
+         * fresh, in-window dataset.
+         */
+        public void resetIndex(String tenant) throws IOException {
+                indexManager.resetIndex(tenant);
         }
-    }
 
-    private String valueOrEmpty(String value) {
+        /** Convenience overload used by the REST/gRPC read paths. */
+        public List<LogRequest> searchLogs(String queryText, int limit) throws Exception {
+                return searchLogs(queryText, null, null, limit);
+        }
 
-        return value == null ? "" : value;
-    }
+        /**
+         * Searches the current tenant's index using the LogStream query language,
+         * optionally merged with a level/service filter.
+         */
+        public List<LogRequest> searchLogs(
+                        String queryText,
+                        String level,
+                        String service,
+                        int limit) throws Exception {
+
+                return search(queryText, level, service, limit, 0).hits().stream()
+                                .map(mapper::toProto)
+                                .toList();
+        }
+
+        /**
+         * Full search entry point returning hits plus metadata.
+         *
+         * @param queryText free-text or LogStream query language expression
+         * @param level     optional exact level filter (merged, may be {@code null})
+         * @param service   optional exact service filter (merged, may be {@code null})
+         * @param limit     page size (clamped to 1..500)
+         * @param offset    zero-based offset for pagination
+         */
+        public SearchResult search(
+                        String queryText,
+                        String level,
+                        String service,
+                        int limit,
+                        int offset) throws IOException {
+
+                String tenant = TenantContext.get();
+
+                int pageSize = Math.min(Math.max(limit, 1), 500);
+                int from = Math.max(offset, 0);
+
+                DirectoryReader reader = indexManager.reader(tenant);
+                if (reader == null) {
+                        return new SearchResult(List.of(), 0, 0);
+                }
+
+                long started = System.currentTimeMillis();
+
+                IndexSearcher searcher = new IndexSearcher(reader);
+                Query query = queryParser.parseWithFilters(queryText, tenant, level, service);
+
+                // Over-fetch to satisfy the offset window without a second round trip.
+                int top = Math.min(from + pageSize, 5000);
+                TopDocs topDocs = searcher.search(query, top);
+
+                List<LogHit> hits = new ArrayList<>();
+                ScoreDoc[] scoreDocs = topDocs.scoreDocs;
+
+                for (int i = from; i < scoreDocs.length && hits.size() < pageSize; i++) {
+                        Document document = searcher.storedFields().document(scoreDocs[i].doc);
+                        hits.add(mapper.toHit(document));
+                }
+
+                long took = System.currentTimeMillis() - started;
+                return new SearchResult(hits, topDocs.totalHits.value(), took);
+        }
+
+        /** Number of live documents for the current tenant's index. */
+        public int getTotalLogs() throws IOException {
+                return indexManager.documentCount(TenantContext.get());
+        }
 }

@@ -132,6 +132,13 @@
             <artifactId>lucene-analysis-common</artifactId>
             <version>10.3.1</version>
         </dependency>
+
+        <!-- Facets / aggregations (level, service, time histograms) -->
+        <dependency>
+            <groupId>org.apache.lucene</groupId>
+            <artifactId>lucene-facet</artifactId>
+            <version>10.3.1</version>
+        </dependency>
         <!-- ========================= -->
         <!-- Testing -->
         <!-- ========================= -->
@@ -204,6 +211,29 @@
 
                 </executions>
 
+            </plugin>
+
+
+            <!-- ========================= -->
+            <!-- Java Compiler -->
+            <!-- ========================= -->
+
+            <!--
+                The protobuf-maven-plugin regenerates the .java sources under
+                target/generated-sources/protobuf on every build, which changes
+                their timestamps. maven-compiler-plugin's incremental build then
+                flags them as "stale" and can drop the generated
+                com.logstream.grpc.* classes from target/classes, causing
+                NoClassDefFoundError at runtime (e.g. LogRequest).
+                Disabling incremental compilation forces a full, consistent
+                recompile every time.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <useIncrementalCompilation>false</useIncrementalCompilation>
+                </configuration>
             </plugin>
 
 
