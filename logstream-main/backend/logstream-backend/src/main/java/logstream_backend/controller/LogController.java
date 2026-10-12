@@ -36,7 +36,6 @@ public class LogController {
         private final LogRepository logRepository;
         private final LuceneLogService luceneLogService;
         private final LogAnalyticsService analyticsService;
-
         public LogController(
                         LogRepository logRepository,
                         LuceneLogService luceneLogService,
@@ -96,7 +95,6 @@ public class LogController {
                                 "count", logs.size(),
                                 "tenant", TenantContext.get());
         }
-
         /**
          * Full-text / structured search using the LogStream query language.
          *
