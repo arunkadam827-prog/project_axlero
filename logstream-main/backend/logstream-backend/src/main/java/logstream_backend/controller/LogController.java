@@ -215,5 +215,6 @@ public class LogController {
                 map.put("errorCode", hit.errorCode());
                 map.put("responseTime", hit.responseTime());
                 return map;
+                
         }
 }
