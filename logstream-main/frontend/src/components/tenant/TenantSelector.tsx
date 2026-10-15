@@ -59,6 +59,7 @@ function TenantSelector() {
                         }
                     }}
                 />
+
                 <button
                     className="tenant-apply"
                     onClick={() => custom.trim() && applyTenant(custom.trim())}
