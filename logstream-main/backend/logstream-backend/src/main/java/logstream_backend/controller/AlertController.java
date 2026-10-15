@@ -23,6 +23,8 @@ public class AlertController {
         this.alertService = alertService;
     }
 
+
+    
     @PostMapping("/rules")
     public AlertRule createRule(@RequestBody AlertRule rule) {
         return alertService.createRule(rule);
