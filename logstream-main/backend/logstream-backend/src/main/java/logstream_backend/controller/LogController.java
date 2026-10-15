@@ -154,6 +154,7 @@ public class LogController {
                 long now = System.currentTimeMillis();
                 long from = now - (Math.max(minutes, 1) * 60_000L);
 
+                
                 return analyticsService.histogram(
                                 TenantContext.get(), q, from, now, intervalToMillis(interval));
         }
