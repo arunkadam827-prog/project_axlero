@@ -100,9 +100,7 @@ function Overview() {
           </div>
 
           <h2>
-            {loading
-              ? "Loading..."
-              : Number(stats.info ?? 0).toLocaleString()}
+            {loading ? "Loading..." : Number(stats.info ?? 0).toLocaleString()}
           </h2>
         </div>
 
@@ -159,20 +157,26 @@ function Overview() {
         {recent.length === 0 ? (
           <div className="log-row">
             <span className="log-message">
-              {loading ? "Loading recent logs…" : "No logs ingested yet."}
+              {loading
+                ? "Loading recent logs..."
+                : "No logs available yet. Start ingesting logs to see activity here."}
             </span>
           </div>
         ) : (
           recent.map((log, index) => (
-            <div className="log-row" key={log.id ?? `${log.timestamp}-${index}`}>
+            <div
+              className="log-row"
+              key={log.id ?? `${log.timestamp}-${index}`}
+            >
               <span className="log-time">
                 {log.timestamp
                   ? new Date(log.timestamp).toLocaleTimeString()
                   : "-"}
               </span>
               <span
-                className={`log-level ${LEVEL_CLASS[(log.level || "").toUpperCase()] ?? "info"
-                  }`}
+                className={`log-level ${
+                  LEVEL_CLASS[(log.level || "").toUpperCase()] ?? "info"
+                }`}
               >
                 {log.level || "INFO"}
               </span>
